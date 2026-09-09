@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>도서 인식 스마트 앱</title>
     <link rel="stylesheet" href="style.css">
-    <script type="module" src="asdfgh.js" defer></script>
+    <script type="module" src="script.js" defer></script>
 </head>
 
 <body>
@@ -28,6 +28,36 @@
                             <path
                                 d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
                         </svg>
+                    </button>
+                </div>
+
+                <!-- 새로 추가된 필터 및 정렬 영역 -->
+                <div class="filter-box" style="display: flex; gap: 0.5rem; margin-top: 0.5rem; width: 100%;">
+                    <select id="ddcSelect"
+                        style="flex: 1; padding: 0.75rem; border: 1px solid #E9ECEF; border-radius: 8px; font-size: 0.9rem; outline: none;">
+                        <option value="">분류 전체</option>
+                        <option value="0">000 총류</option>
+                        <option value="1">100 철학</option>
+                        <option value="2">200 종교</option>
+                        <option value="3">300 사회과학</option>
+                        <option value="4">400 자연과학</option>
+                        <option value="5">500 기술과학</option>
+                        <option value="6">600 예술</option>
+                        <option value="7">700 언어</option>
+                        <option value="8">800 문학</option>
+                        <option value="9">900 역사</option>
+                    </select>
+
+                    <select id="sortBySelect"
+                        style="flex: 1; padding: 0.75rem; border: 1px solid #E9ECEF; border-radius: 8px; font-size: 0.9rem; outline: none;">
+                        <option value="title">제목순</option>
+                        <option value="author">작가순</option>
+                        <option value="ddc">분류기호순</option>
+                    </select>
+
+                    <button id="sortOrderToggle" data-order="asc"
+                        style="padding: 0.75rem 1rem; border: 1px solid #E9ECEF; border-radius: 8px; background: white; font-size: 0.9rem; font-weight: bold; cursor: pointer; color: var(--text-dark);">
+                        오름차순 ▲
                     </button>
                 </div>
 

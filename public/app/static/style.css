@@ -239,6 +239,7 @@ button.action-btn:active {
     color: #ffffff;
 }
 
+/* 카메라 모달 화면 - display: none을 기본으로 설정 */
 .fullscreen-camera {
     display: none;
     position: fixed;
@@ -247,10 +248,7 @@ button.action-btn:active {
     width: 100vw;
     height: 100vh;
     background-color: #000;
-    /* 남는 여백(레터박스)을 검은색으로 자연스럽게 채움 */
     z-index: 9999;
-    display: flex;
-    /* 내부 요소 중앙 정렬을 위해 추가 */
     align-items: center;
     justify-content: center;
 }
@@ -279,7 +277,6 @@ button.action-btn:active {
     cursor: pointer;
     z-index: 10000;
 }
-
 
 #photo {
     display: none;
