@@ -182,6 +182,8 @@ firebase emulators:start
 
 `1.1.0` - 검색 시 소분류 추가
 
+`1.2.0` - 파일 구조 재정리
+
 ## License
 
 이 프로젝트는 [MIT License](./LICENSE)를 따릅니다.
