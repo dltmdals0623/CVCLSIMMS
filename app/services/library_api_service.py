@@ -1,5 +1,6 @@
 import asyncio
 import httpx
+import math
 
 from app.config import (
   LIBRARY_API_BASE_URL,
@@ -8,7 +9,7 @@ from app.config import (
   LIBRARY_SCHOOL_NAME,
 )
 
-async def search_books(keyword: str, ddc: str = None, page: int = 1, display: int = 10) -> dict:
+async def search_books(keyword: str, ddc: str = None, page: int = 1, display: int = 50) -> dict:
   """
   1. 검색 API 호출
   2. 검색된 책마다 상태 API(대출상태, 표지 등)를 동시에 호출
@@ -25,43 +26,66 @@ async def search_books(keyword: str, ddc: str = None, page: int = 1, display: in
     "facet": "Y",
   }
 
-  async with httpx.AsyncClient() as client:
-    response = await client.post(f"{LIBRARY_API_BASE_URL}/search", json=payload)
-    response.raise_for_status()
-    search_data = response.json()
+async def search_books(keyword: str, ddc: str = None, target_count: int = 150) -> dict:
+    display_limit = 50  # API 1회 최대 제한
+    # 필요한 총 페이지 수 계산 (예: 150개 원하면 3페이지 필요)
+    max_pages = math.ceil(target_count / display_limit)
 
-    raw_book_list = search_data["data"]["bookList"]
+    async with httpx.AsyncClient() as client:
+        # 1. 1페이지부터 max_pages까지 비동기 요청 생성
+        tasks = []
+        for page in range(1, max_pages + 1):
+            payload = {
+                "searchKeyword": keyword,
+                "page": page,
+                "display": display_limit,
+                "neisCode": [LIBRARY_NEIS_CODE],
+                "provCode": LIBRARY_PROV_CODE,
+                "schoolName": LIBRARY_SCHOOL_NAME,
+                "coverYn": "N",
+                "facet": "Y",
+            }
+            tasks.append(client.post(f"{LIBRARY_API_BASE_URL}/search", json=payload))
 
-    # 1차 필터링: 제목 또는 저자에 검색어가 포함된 책만 필터링
-    keyword_lower = keyword.lower()
-    book_list = [
-        b for b in raw_book_list
-        if (b.get("title") and keyword_lower in b.get("title").lower()) or 
-          (b.get("author") and keyword_lower in b.get("author").lower())
-    ]
+        # 모든 페이지 요청을 동시에 실행
+        responses = await asyncio.gather(*tasks)
 
-    # 2차 필터링: ddc(분류) 값이 존재하면, 분류 기호(classNo)의 시작 번호가 일치하는 도서만 필터링
-    if ddc:
+        # 2. 검색 결과 병합
+        raw_book_list = []
+        for res in responses:
+            if res.status_code == 200:
+                data = res.json()
+                raw_book_list.extend(data.get("data", {}).get("bookList", []))
+
+        # 3. 1차 필터링: 제목 또는 저자 조건
+        keyword_lower = keyword.lower()
         book_list = [
-            b for b in book_list
-            if b.get("classNo") and str(b.get("classNo")).startswith(str(ddc))
+            b for b in raw_book_list
+            if (b.get("title") and keyword_lower in b.get("title").lower()) or 
+               (b.get("author") and keyword_lower in b.get("author").lower())
         ]
 
-    # 책 리스트 전체를 동시에 조회 (순차로 하면 책 10권이면 10배 느려짐)
-    states = await asyncio.gather(
-      *[
-        _fetch_book_state(client, b["bookKey"], b["neisCode"], b["provCode"])
-        for b in book_list
-      ]
-    )
+        # 4. 2차 필터링: DDC 분류 조건
+        if ddc:
+            book_list = [
+                b for b in book_list
+                if b.get("classNo") and str(b.get("classNo")).startswith(str(ddc))
+            ]
 
-  # 검색 결과 + 상태 결과 합치기 (상태 값이 있으면 덮어씀)
-  merged_books = [{**book, **state} for book, state in zip(book_list, states)]
+        # 5. 각 도서별 상태(대출 여부 등) 개별 조회
+        states = await asyncio.gather(
+            *[
+                _fetch_book_state(client, b["bookKey"], b["neisCode"], b["provCode"])
+                for b in book_list
+            ]
+        )
 
-  return {
-    "total_count": len(merged_books), # 필터링 후의 실제 도서 개수로 업데이트
-    "books": merged_books,
-  }
+    merged_books = [{**book, **state} for book, state in zip(book_list, states)]
+
+    return {
+        "total_count": len(merged_books),
+        "books": merged_books,
+    }
 
 async def _fetch_book_state(
   client: httpx.AsyncClient, book_key: str, neis_code: str, prov_code: str

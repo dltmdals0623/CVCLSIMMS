@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const $imageSearchContainer = document.getElementById('imageSearchContainer');
     const $searchResultMessage = document.getElementById('searchResultMessage');
 
-    // 새로 추가된 필터 DOM
     const $ddcSelect = document.getElementById('ddcSelect');
     const $sortBySelect = document.getElementById('sortBySelect');
     const $sortOrderToggle = document.getElementById('sortOrderToggle');
@@ -26,6 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const $closeCameraBtn = document.getElementById('closeCameraBtn');
     const $captureBtn = document.getElementById('captureBtn');
     const $retryBtn = document.getElementById('retryBtn');
+
+    const $bookList = document.getElementById('bookList');
+    let currentBooks = [];
 
     // 초기 상태 셋팅
     stopCamera();
@@ -73,7 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function executeSearch() {
         const query = $searchInput.value.trim();
         const ddc = $ddcSelect.value;
-        // 정렬(sort, order) 변수는 프론트엔드 렌더링 시에만 사용할 것이므로 API 파라미터에서 제외합니다.
 
         if (!query) {
             alert('검색어를 입력해주세요.');
@@ -81,13 +82,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         $searchResultMessage.textContent = '검색 중입니다...';
+        $bookList.innerHTML = ''; // 이전 검색 결과 초기화
 
         try {
-            // URL 파라미터 구성 (검색어 q만 기본 할당)
             const params = new URLSearchParams({ q: query });
             if (ddc !== "") { params.append('ddc', ddc); }
 
-            // 백엔드 API 연동
             const response = await fetch(`${API_BASE_URL}/api/books?${params.toString()}`);
             if (!response.ok) throw new Error('서버 응답 오류');
 
@@ -95,10 +95,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data.total_count > 0) {
                 $searchResultMessage.textContent = `총 ${data.total_count}권의 도서가 검색되었습니다.`;
-
-                // TODO: 여기서 data.books 배열을 프론트엔드 UI의 정렬 기준($sortBySelect, $sortOrderToggle)에 맞춰 정렬한 뒤 화면에 렌더링
-                console.log('검색된 책 목록:', data.books);
+                currentBooks = data.books; // 검색 결과 데이터 저장
+                renderBooks();             // 카드 화면 렌더링 호출
             } else {
+                currentBooks = [];
                 $searchResultMessage.textContent = '검색 결과가 없습니다.';
             }
         } catch (error) {
@@ -113,7 +113,64 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --------------------------------------------------------
-    // 5. 카메라 제어 (비율 및 해상도 최적화)
+    // 5. 도서 목록 정렬 및 렌더링 함수
+    // --------------------------------------------------------
+    function renderBooks() {
+        $bookList.innerHTML = ''; // 기존 목록 초기화
+
+        if (currentBooks.length === 0) return;
+
+        const sortBy = $sortBySelect.value; // title | author | ddc
+        const isAsc = $sortOrderToggle.getAttribute('data-order') === 'asc';
+
+        // 1. 정렬 수행
+        const sortedBooks = [...currentBooks].sort((a, b) => {
+            let valA = '';
+            let valB = '';
+
+            if (sortBy === 'title') {
+                valA = a.title || '';
+                valB = b.title || '';
+            } else if (sortBy === 'author') {
+                valA = a.author || '';
+                valB = b.author || '';
+            } else if (sortBy === 'ddc') {
+                valA = String(a.classNo || '');
+                valB = String(b.classNo || '');
+            }
+
+            const comparison = valA.localeCompare(valB, 'ko', { numeric: true });
+            return isAsc ? comparison : -comparison;
+        });
+
+        // 2. 카드 HTML 생성 및 추가
+        sortedBooks.forEach(book => {
+            const card = document.createElement('div');
+            card.className = 'book-card';
+
+            // 이미지 URL fallback 처리 (기본 이미지)
+            const coverSrc = book.coverUrl || book.cover || 'https://via.placeholder.com/70x100?text=No+Image';
+
+            card.innerHTML = `
+                <img src="${coverSrc}" alt="${book.title}" class="book-cover" onerror="this.src='https://via.placeholder.com/70x100?text=No+Image'" />
+                <div class="book-info">
+                    <h3 class="book-title" title="${book.title}">${book.title}</h3>
+                    <p class="book-author">저자: ${book.author || '저자 미상'}</p>
+                    <p class="book-ddc">십진분류: ${book.classNo ? book.classNo : '정보 없음'}</p>
+                </div>
+            `;
+            $bookList.appendChild(card);
+        });
+    }
+
+
+
+
+
+
+
+    // --------------------------------------------------------
+    // 6. 카메라 제어 (비율 및 해상도 최적화)
     // --------------------------------------------------------
     function stopCamera() {
         if ($video.srcObject) {
@@ -183,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --------------------------------------------------------
-    // 6. 이미지 캡처 및 서버 전송 기능 (/api/scan)
+    // 7. 이미지 캡처 및 서버 전송 기능 (/api/scan)
     // --------------------------------------------------------
     async function handleCapture() {
         const context = $canvas.getContext('2d');

@@ -71,43 +71,38 @@ CVCLSIMMS/
 ├── firebase.js
 ├── firebase.json
 ├── LICENSE
+├── README.md
 │
-├── .firebase
-│     └── hosting.cHVibGlj.cache
+├── app/
+│    ├── config.py
+│    ├── main.py
+│    ├── requirements.txt
+│    ├── schemas.py
+│    ├── __init__.py
+│    │
+│    ├── data/
+│    │    └── book_list.csv
+│    │
+│    ├── models/
+│    │    └── directory_for_yolo
+│    │
+│    ├── routers/
+│    │    ├── books.py
+│    │    └── scan.py
+│    │
+│    ├── scans/
+│    │    └── tempfile
+│    │
+│    └── services/
+│         ├── book_service.py
+│         ├── library_api_service.py
+│         └── scan_service.py
 │
-└── public
-      ├── app
-      │     ├── config.py
-      │     ├── main.py
-      │     ├── schemas.py
-      │     ├── __init__.py
-      │     │
-      │     ├── data
-      │     │     └── book_list.csv
-      │     │
-      │     ├── routers
-      │     │     ├── books.py
-      │     │     └── scan.py
-      │     │
-      │     ├── scans
-      │     │     └── tempfile
-      │     │
-      │     ├── services
-      │     │     ├── book_service.py
-      │     │     ├── library_api_service.py
-      │     │     └── scan_service.py
-      │     │
-      │     └── static
-      │           ├── 404.html
-      │           ├── asdfgh.js
-      │           ├── index.html
-      │           ├── script.js
-      │           └── style.css
-      │
-      ├── models
-      │     └── directory_for_yolo
-      │
-      └─scans
+└── public/
+     ├── 404.html
+     ├── index.html
+     ├── script.js
+     └── style.css
 ```
 <!-- 
 ## 시작하기
@@ -183,6 +178,8 @@ firebase emulators:start
 `1.1.0` - 검색 시 소분류 추가
 
 `1.2.0` - 파일 구조 재정리
+
+`1.3.0` - 검색 정상화 및 검색 결과 출력 기능 추가
 
 ## License
 
