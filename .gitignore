@@ -27,3 +27,4 @@ node_modules/
 .dataconnect
 *__pycache__
 *.pt
+it_mustn't_be_in_github.py

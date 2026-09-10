@@ -181,6 +181,8 @@ firebase emulators:start
 
 `1.3.0` - 검색 정상화 및 검색 결과 출력 기능 추가
 
+`1.4.0` - 검색 시 필터 및 정렬 구현
+
 ## License
 
 이 프로젝트는 [MIT License](./LICENSE)를 따릅니다.

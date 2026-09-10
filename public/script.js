@@ -67,6 +67,17 @@ document.addEventListener('DOMContentLoaded', () => {
             $sortOrderToggle.setAttribute('data-order', 'asc');
             $sortOrderToggle.textContent = '오름차순 ▲';
         }
+        renderBooks();
+    });
+
+    $ddcSelect.addEventListener('change', () => {
+        if ($searchInput.value.trim()) {
+            executeSearch();
+        }
+    });
+
+    $sortBySelect.addEventListener('change', () => {
+        renderBooks();
     });
 
     // --------------------------------------------------------
@@ -82,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         $searchResultMessage.textContent = '검색 중입니다...';
-        $bookList.innerHTML = ''; // 이전 검색 결과 초기화
+        $bookList.innerHTML = '';
 
         try {
             const params = new URLSearchParams({ q: query });
@@ -95,8 +106,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data.total_count > 0) {
                 $searchResultMessage.textContent = `총 ${data.total_count}권의 도서가 검색되었습니다.`;
-                currentBooks = data.books; // 검색 결과 데이터 저장
-                renderBooks();             // 카드 화면 렌더링 호출
+                currentBooks = data.books; // 신규 데이터를 메모리에 저장
+                renderBooks();             // 저장된 데이터를 기준으로 렌더링
             } else {
                 currentBooks = [];
                 $searchResultMessage.textContent = '검색 결과가 없습니다.';
@@ -104,6 +115,20 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('검색 오류:', error);
             $searchResultMessage.textContent = '검색 중 오류가 발생했습니다.';
+        }
+        if (data.total_count > 0) {
+            $searchResultMessage.textContent = `총 ${data.total_count}권의 도서가 검색되었습니다.`;
+
+            // API 검색 순서(정확도)를 보존하기 위해 originalIndex를 부여합니다.
+            currentBooks = data.books.map((book, index) => ({
+                ...book,
+                originalIndex: index
+            }));
+
+            renderBooks();
+        } else {
+            currentBooks = [];
+            $searchResultMessage.textContent = '검색 결과가 없습니다.';
         }
     }
 
@@ -116,49 +141,55 @@ document.addEventListener('DOMContentLoaded', () => {
     // 5. 도서 목록 정렬 및 렌더링 함수
     // --------------------------------------------------------
     function renderBooks() {
-        $bookList.innerHTML = ''; // 기존 목록 초기화
+        if (!$bookList) return;
+        $bookList.innerHTML = '';
 
-        if (currentBooks.length === 0) return;
+        if (!currentBooks || currentBooks.length === 0) return;
 
-        const sortBy = $sortBySelect.value; // title | author | ddc
+        const sortBy = $sortBySelect.value;
         const isAsc = $sortOrderToggle.getAttribute('data-order') === 'asc';
 
-        // 1. 정렬 수행
         const sortedBooks = [...currentBooks].sort((a, b) => {
-            let valA = '';
-            let valB = '';
+            let comparison = 0;
 
-            if (sortBy === 'title') {
-                valA = a.title || '';
-                valB = b.title || '';
+            if (sortBy === 'accuracy') {
+                // 정확도순: API 원본 검색 결과 순서(originalIndex) 기준
+                comparison = a.originalIndex - b.originalIndex;
+            } else if (sortBy === 'title') {
+                // 1차: 제목, 2차: 청구기호
+                comparison = (a.title || '').localeCompare(b.title || '', 'ko', { numeric: true });
+                if (comparison === 0) {
+                    const callA = a.callNo || a.call_no || a.classNo || '';
+                    const callB = b.callNo || b.call_no || b.classNo || '';
+                    comparison = compareCallNumbers(callA, callB);
+                }
             } else if (sortBy === 'author') {
-                valA = a.author || '';
-                valB = b.author || '';
+                comparison = (a.author || '').localeCompare(b.author || '', 'ko', { numeric: true });
             } else if (sortBy === 'ddc') {
-                valA = String(a.classNo || '');
-                valB = String(b.classNo || '');
+                const callA = a.callNo || a.call_no || a.classNo || '';
+                const callB = b.callNo || b.call_no || b.classNo || '';
+                comparison = compareCallNumbers(callA, callB);
             }
 
-            const comparison = valA.localeCompare(valB, 'ko', { numeric: true });
             return isAsc ? comparison : -comparison;
         });
 
-        // 2. 카드 HTML 생성 및 추가
+        // 화면 카드 그리기
         sortedBooks.forEach(book => {
             const card = document.createElement('div');
             card.className = 'book-card';
 
-            // 이미지 URL fallback 처리 (기본 이미지)
-            const coverSrc = book.coverUrl || book.cover || 'https://via.placeholder.com/70x100?text=No+Image';
+            const coverSrc = book.coverUrl || book.cover || book.cover_url || 'https://via.placeholder.com/56x80?text=No+Image';
 
             card.innerHTML = `
-                <img src="${coverSrc}" alt="${book.title}" class="book-cover" onerror="this.src='https://via.placeholder.com/70x100?text=No+Image'" />
-                <div class="book-info">
-                    <h3 class="book-title" title="${book.title}">${book.title}</h3>
-                    <p class="book-author">저자: ${book.author || '저자 미상'}</p>
-                    <p class="book-ddc">십진분류: ${book.classNo ? book.classNo : '정보 없음'}</p>
-                </div>
-            `;
+            <img src="${coverSrc}" alt="${book.title || '도서'}" class="book-cover" onerror="this.src='https://via.placeholder.com/56x80?text=No+Image'" />
+            <div class="book-info">
+                <h3 class="book-title" title="${book.title || ''}">${book.title || '제목 없음'}</h3>
+                <p class="book-author">저자: ${book.author || '저자 미상'}</p>
+                <p class="book-publisher">출판사: ${book.publisher || book.pub || '정보 없음'}</p>
+            <p class="book-callno"> ${book.callNo || book.call_no || '기호 없음'}</p>
+            </div>
+        `;
             $bookList.appendChild(card);
         });
     }
@@ -298,3 +329,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
+
+
+
+function compareCallNumbers(callNoA, callNoB) {
+    const parseInfo = (str) => {
+        const s = String(str || '').toLowerCase();
+
+        // v.N 또는 vN 형태에서 숫자 추출 (권차)
+        const vMatch = s.match(/v\.?\s*(\d+)/);
+        // c.N 또는 cN 형태에서 숫자 추출 (복본)
+        const cMatch = s.match(/c\.?\s*(\d+)/);
+
+        // v.n 및 c.n 표기를 제거한 기본 청구기호 추출
+        const base = s.replace(/v\.?\s*\d+/g, '').replace(/c\.?\s*\d+/g, '').trim();
+
+        return {
+            base: base,
+            v: vMatch ? parseInt(vMatch[1], 10) : 0,
+            c: cMatch ? parseInt(cMatch[1], 10) : 0
+        };
+    };
+
+    const a = parseInfo(callNoA);
+    const b = parseInfo(callNoB);
+
+    // 1차 비교: 기본 청구기호/분류기호 (예: 813.6 세68)
+    const baseCompare = a.base.localeCompare(b.base, 'ko', { numeric: true });
+    if (baseCompare !== 0) return baseCompare;
+
+    // 2차 비교: 권차 수치 비교 (v.1 < v.2 < v.10)
+    if (a.v !== b.v) return a.v - b.v;
+
+    // 3차 비교: 복본 수치 비교 (c.1 < c.2 < c.10)
+    return a.c - b.c;
+}
