@@ -183,6 +183,8 @@ firebase emulators:start
 
 `1.4.0` - 검색 시 필터 및 정렬 구현
 
+`1.5.0` - 정확도 필터 추가 및 출판사 검색 추가
+
 ## License
 
 이 프로젝트는 [MIT License](./LICENSE)를 따릅니다.

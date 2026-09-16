@@ -353,7 +353,7 @@ button.action-btn:active {
     border-radius: 0.5rem;
     background-color: #f1f3f5;
     flex-shrink: 0;
-    margin-right: 1rem;
+    margin-right: 0.75rem;
 }
 
 /* 도서 정보 영역 */

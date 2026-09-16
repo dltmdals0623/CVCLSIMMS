@@ -9,30 +9,11 @@ from app.config import (
   LIBRARY_SCHOOL_NAME,
 )
 
-async def search_books(keyword: str, ddc: str = None, page: int = 1, display: int = 50) -> dict:
-  """
-  1. 검색 API 호출
-  2. 검색된 책마다 상태 API(대출상태, 표지 등)를 동시에 호출
-  3. 각 책 정보에 상태 정보를 합쳐서 반환
-  """
-  payload = {
-    "searchKeyword": keyword,
-    "page": page,
-    "display": display,
-    "neisCode": [LIBRARY_NEIS_CODE],
-    "provCode": LIBRARY_PROV_CODE,
-    "schoolName": LIBRARY_SCHOOL_NAME,
-    "coverYn": "N",
-    "facet": "Y",
-  }
-
-async def search_books(keyword: str, ddc: str = None, target_count: int = 150) -> dict:
-    display_limit = 50  # API 1회 최대 제한
-    # 필요한 총 페이지 수 계산 (예: 150개 원하면 3페이지 필요)
+async def search_books(keyword: str, ddc: str = None, target_count: int = 1000) -> dict:
+    display_limit = 50
     max_pages = math.ceil(target_count / display_limit)
 
     async with httpx.AsyncClient() as client:
-        # 1. 1페이지부터 max_pages까지 비동기 요청 생성
         tasks = []
         for page in range(1, max_pages + 1):
             payload = {
@@ -57,12 +38,14 @@ async def search_books(keyword: str, ddc: str = None, target_count: int = 150) -
                 data = res.json()
                 raw_book_list.extend(data.get("data", {}).get("bookList", []))
 
-        # 3. 1차 필터링: 제목 또는 저자 조건
-        keyword_lower = keyword.lower()
+        keyword_no_space = keyword.replace(" ", "").lower()
+        
+        def is_match(val):
+            return val and keyword_no_space in str(val).replace(" ", "").lower()
+
         book_list = [
             b for b in raw_book_list
-            if (b.get("title") and keyword_lower in b.get("title").lower()) or 
-               (b.get("author") and keyword_lower in b.get("author").lower())
+            if is_match(b.get("title")) or is_match(b.get("author")) or is_match(b.get("publisher"))
         ]
 
         # 4. 2차 필터링: DDC 분류 조건

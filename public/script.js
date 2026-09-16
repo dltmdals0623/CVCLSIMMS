@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const $bookList = document.getElementById('bookList');
     let currentBooks = [];
+    let currentQuery = '';
 
     // 초기 상태 셋팅
     stopCamera();
@@ -86,6 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function executeSearch() {
         const query = $searchInput.value.trim();
         const ddc = $ddcSelect.value;
+
+        currentQuery = query.replace(/\s+/g, '').toLowerCase();
 
         if (!query) {
             alert('검색어를 입력해주세요.');
@@ -152,20 +155,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const sortedBooks = [...currentBooks].sort((a, b) => {
             let comparison = 0;
 
+            // 1. 1순위 기준 정렬
             if (sortBy === 'accuracy') {
-                // 정확도순: API 원본 검색 결과 순서(originalIndex) 기준
-                comparison = a.originalIndex - b.originalIndex;
+                const diffA = getMinDifference(a, currentQuery);
+                const diffB = getMinDifference(b, currentQuery);
+                comparison = diffA - diffB;
             } else if (sortBy === 'title') {
-                // 1차: 제목, 2차: 청구기호
                 comparison = (a.title || '').localeCompare(b.title || '', 'ko', { numeric: true });
-                if (comparison === 0) {
-                    const callA = a.callNo || a.call_no || a.classNo || '';
-                    const callB = b.callNo || b.call_no || b.classNo || '';
-                    comparison = compareCallNumbers(callA, callB);
-                }
             } else if (sortBy === 'author') {
                 comparison = (a.author || '').localeCompare(b.author || '', 'ko', { numeric: true });
             } else if (sortBy === 'ddc') {
+                const callA = a.callNo || a.call_no || a.classNo || '';
+                const callB = b.callNo || b.call_no || b.classNo || '';
+                comparison = compareCallNumbers(callA, callB);
+            }
+
+            // 2. 2순위 (공통): 1순위 값이 완전히 같을 때(comparison === 0) 세부 청구기호로 비교
+            // 단, 이미 ddc로 정렬한 경우는 다시 계산할 필요가 없으므로 제외
+            if (comparison === 0 && sortBy !== 'ddc') {
                 const callA = a.callNo || a.call_no || a.classNo || '';
                 const callB = b.callNo || b.call_no || b.classNo || '';
                 comparison = compareCallNumbers(callA, callB);
@@ -308,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const blob = await response.blob();
 
             const formData = new FormData();
-            formData.append('-F', blob, 'scan_image.jpg');
+            formData.append('file', blob, 'scan_image.jpg');
 
             const apiResponse = await fetch(`${API_BASE_URL}/api/scan`, { method: 'POST', body: formData });
 
@@ -364,4 +371,42 @@ function compareCallNumbers(callNoA, callNoB) {
 
     // 3차 비교: 복본 수치 비교 (c.1 < c.2 < c.10)
     return a.c - b.c;
+}
+
+function getEditDistance(a, b) {
+    if (!a) return b.length;
+    if (!b) return a.length;
+    const matrix = [];
+    for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+    for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+    for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+            if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j - 1] + 1, // 삭제
+                    matrix[i][j - 1] + 1,     // 삽입
+                    matrix[i - 1][j] + 1      // 대체
+                );
+            }
+        }
+    }
+    return matrix[b.length][a.length];
+}
+
+// 제목, 저자, 출판사 중 검색어와 가장 차이가 적은(가까운) 값을 반환
+function getMinDifference(book, query) {
+    if (!query) return 0;
+
+    // 대상 문자열들도 띄어쓰기를 제거하고 소문자로 변환하여 비교
+    const t = String(book.title || '').replace(/\s+/g, '').toLowerCase();
+    const a = String(book.author || '').replace(/\s+/g, '').toLowerCase();
+    const p = String(book.publisher || book.pub || '').replace(/\s+/g, '').toLowerCase();
+
+    return Math.min(
+        getEditDistance(t, query),
+        getEditDistance(a, query),
+        getEditDistance(p, query)
+    );
 }

@@ -47,10 +47,14 @@ def search_books(q: Optional[str]) -> List[dict]:
   df = _load_dataframe()
 
   if q:
-    # 제목(title) 또는 저자(author)에 검색어가 포함된 경우 필터링
+    # 띄어쓰기 제거
+    q_no_space = q.replace(" ", "")
+    
+    # 대상 컬럼 데이터에서도 띄어쓰기를 제거한 후 검색어와 비교
     mask = (
-      df["title"].str.contains(q, case=False, na=False) |
-      df["author"].str.contains(q, case=False, na=False)
+      df["title"].astype(str).str.replace(" ", "", regex=False).str.contains(q_no_space, case=False, na=False) |
+      df["author"].astype(str).str.replace(" ", "", regex=False).str.contains(q_no_space, case=False, na=False) |
+      df["publisher"].astype(str).str.replace(" ", "", regex=False).str.contains(q_no_space, case=False, na=False)
     )
     result = df[mask]
   else:
