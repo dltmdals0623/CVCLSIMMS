@@ -1,16 +1,16 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
 :root {
-    --main-mint: #48D1CC;
-    --main-mint-hover: #3BB8B3;
-    --point-coral: #FF7F50;
-    --point-coral-hover: #E66A3C;
-    --bg-gray: #F8F9FA;
-    --card-white: #FFFFFF;
-    --text-dark: #212529;
-    --text-muted: #6C757D;
-    --shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.06);
-    --radius-large: 1.5rem;
+    --main-mint: #793747;
+    --main-mint-hover: #612B39;
+    --point-coral: #8C584A;
+    --point-coral-hover: #74483D;
+    --bg-gray: #F5F0E5;
+    --card-white: #FFFCF4;
+    --text-dark: #282A27;
+    --text-muted: #565C56;
+    --shadow: none;
+    --radius-large: 0.75rem;
 }
 
 * {
@@ -41,7 +41,7 @@ body {
     width: 3rem;
     height: 3rem;
     background-color: var(--card-white);
-    border: none;
+    border: 1px solid #DCD2C2;
     border-radius: 50%;
     box-shadow: var(--shadow);
     cursor: pointer;
@@ -93,6 +93,7 @@ main {
 .card-container {
     background-color: var(--card-white);
     border-radius: var(--radius-large);
+    border: 1px solid #DCD2C2;
     box-shadow: var(--shadow);
     padding: 1.5rem;
     display: flex;
@@ -116,10 +117,12 @@ h1 {
 }
 
 .search-box input {
+    background-color: var(--card-white);
+    color: var(--text-dark);
     width: 100%;
     padding: 1rem 3.25rem 1rem 1.25rem;
-    border: 0.125rem solid #E9ECEF;
-    border-radius: 1.25rem;
+    border: 0.125rem solid #DCD2C2;
+    border-radius: 0.5rem;
     font-size: 1rem;
     outline: none;
     transition: border-color 0.2s;
@@ -147,7 +150,7 @@ h1 {
 
 .search-icon-btn:hover {
     color: var(--main-mint);
-    background-color: rgba(72, 209, 204, 0.1);
+    background-color: #F0E2E4;
 }
 
 .search-icon-btn svg {
@@ -163,7 +166,7 @@ h1 {
     gap: 0.75rem;
     margin-top: 0.5rem;
     padding-top: 1rem;
-    border-top: 1px dashed #E9ECEF;
+    border-top: 1px solid #DCD2C2;
     animation: fadeIn 0.3s ease-in-out;
 }
 
@@ -193,7 +196,7 @@ h1 {
 button.action-btn {
     padding: 1rem;
     border: none;
-    border-radius: 1.25rem;
+    border-radius: 0.5rem;
     font-size: 1rem;
     font-weight: 600;
     color: white;
@@ -225,9 +228,9 @@ button.action-btn:active {
 .back-btn {
     padding: 0.5rem 1.5rem;
     font-size: 1rem;
-    border: 1.5px solid var(--main-mint, #48D1CC);
+    border: 1.5px solid var(--main-mint, #793747);
     background: transparent;
-    color: var(--main-mint, #48D1CC);
+    color: var(--main-mint, #793747);
     border-radius: 6px;
     cursor: pointer;
     white-space: nowrap;
@@ -236,7 +239,7 @@ button.action-btn:active {
 }
 
 #backBtn.back-btn:hover {
-    background: var(--main-mint, #48D1CC);
+    background: var(--main-mint, #793747);
     color: #ffffff;
 }
 
@@ -268,8 +271,7 @@ button.action-btn:active {
     left: 2rem;
     width: 3.5rem;
     height: 3.5rem;
-    background-color: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(4px);
+    background-color: #343833;
     border: none;
     border-radius: 50%;
     color: white;
@@ -316,7 +318,7 @@ button.action-btn:active {
 }
 
 .retry {
-    background-color: #28a745;
+    background-color: #655451;
 }
 
 /* 도서 목록 컨테이너 */
@@ -334,15 +336,15 @@ button.action-btn:active {
     align-items: center;
     gap: 1rem;
     padding: 1rem;
-    border: 1px solid #E9ECEF;
-    border-radius: 1rem;
-    background-color: #ffffff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    transition: transform 0.2s ease;
+    border: 1px solid #DCD2C2;
+    border-radius: 0.625rem;
+    background-color: var(--card-white);
+
+    transition: background-color 0.2s ease;
 }
 
 .book-card:hover {
-    transform: translateY(-2px);
+    background-color: #F7EFE6;
 }
 
 /* 도서 표지 이미지 */
@@ -351,7 +353,7 @@ button.action-btn:active {
     height: 100px;
     object-fit: cover;
     border-radius: 0.5rem;
-    background-color: #f1f3f5;
+    background-color: #EDE5D7;
     flex-shrink: 0;
     margin-right: 0.75rem;
 }
@@ -368,7 +370,7 @@ button.action-btn:active {
 .book-title {
     font-size: 1rem;
     font-weight: 700;
-    color: #212529;
+    color: #282A27;
     margin-bottom: 0.5rem;
     white-space: nowrap;
     overflow: hidden;
@@ -377,25 +379,25 @@ button.action-btn:active {
 
 .book-author {
     font-size: 0.8rem;
-    color: #495057;
+    color: #4D524D;
     margin: 0;
 }
 
 .book-ddc {
     font-size: 0.8rem;
-    color: #868e96;
+    color: #60665E;
     margin: 0;
 }
 
 .book-publisher {
     font-size: 0.8rem;
-    color: #495057;
+    color: #4D524D;
     margin: 0;
 }
 
 .book-callno {
     font-size: 0.85rem;
-    color: #2b6cb0;
+    color: #793747;
     font-weight: 500;
-    margin-top: 0.1rem
+    margin-top: 0.1rem;
 }

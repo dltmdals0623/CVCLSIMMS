@@ -29,3 +29,4 @@ node_modules/
 *.pt
 it_mustn't_be_in_github.py
 scans
+.vscode/
