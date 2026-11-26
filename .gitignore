@@ -28,4 +28,11 @@ node_modules/
 *__pycache__
 *.pt
 it_mustn't_be_in_github.py
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+app/scans/*
+app/secrets/*
+app/data/*
+app/models/*
 scans
+.vscode/

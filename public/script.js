@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const $searchBtn = document.getElementById('searchBtn');
     const $imageSearchContainer = document.getElementById('imageSearchContainer');
     const $searchResultMessage = document.getElementById('searchResultMessage');
+    const $scanResultLink = document.getElementById('scanResultLink');
+    const $scanResultImage = document.getElementById('scanResultImage');
 
     const $ddcSelect = document.getElementById('ddcSelect');
     const $sortBySelect = document.getElementById('sortBySelect');
@@ -29,11 +31,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const $bookList = document.getElementById('bookList');
     let currentBooks = [];
     let currentQuery = '';
+    let selectedBook = null; // 실제로 찾을(선택한) 도서. 선택 전에는 이미지 검색 버튼이 잠김
 
     // 초기 상태 셋팅
     stopCamera();
     $cameraPage.style.display = 'none';
     $imageSearchContainer.style.display = 'block'; // 이미지 검색 영역 보이기
+    updateImageSearchLock();                       // 처음에는 선택된 책이 없으므로 잠금
 
     const API_BASE_URL = 'http://localhost:8000';
 
@@ -97,6 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         $searchResultMessage.textContent = '검색 중입니다...';
         $bookList.innerHTML = '';
+        clearSelection(); // 새로 검색하면 이전 선택을 해제하고 이미지 검색을 다시 잠금
+        hideScanResultImage();
 
         try {
             const params = new URLSearchParams({ q: query });
@@ -108,30 +114,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (data.total_count > 0) {
-                $searchResultMessage.textContent = `총 ${data.total_count}권의 도서가 검색되었습니다.`;
-                currentBooks = data.books; // 신규 데이터를 메모리에 저장
-                renderBooks();             // 저장된 데이터를 기준으로 렌더링
+                $searchResultMessage.textContent = `총 ${data.total_count}권의 도서가 검색되었습니다. 찾을 책을 선택해 주세요.`;
+
+                // API 검색 순서(정확도)를 보존하기 위해 originalIndex를 부여합니다.
+                // (originalIndex는 정렬 후에도 각 책을 구분하는 선택 키로도 사용)
+                currentBooks = data.books.map((book, index) => ({
+                    ...book,
+                    originalIndex: index
+                }));
+                renderBooks();
             } else {
                 currentBooks = [];
                 $searchResultMessage.textContent = '검색 결과가 없습니다.';
             }
         } catch (error) {
             console.error('검색 오류:', error);
-            $searchResultMessage.textContent = '검색 중 오류가 발생했습니다.';
-        }
-        if (data.total_count > 0) {
-            $searchResultMessage.textContent = `총 ${data.total_count}권의 도서가 검색되었습니다.`;
-
-            // API 검색 순서(정확도)를 보존하기 위해 originalIndex를 부여합니다.
-            currentBooks = data.books.map((book, index) => ({
-                ...book,
-                originalIndex: index
-            }));
-
-            renderBooks();
-        } else {
             currentBooks = [];
-            $searchResultMessage.textContent = '검색 결과가 없습니다.';
+            $searchResultMessage.textContent = '검색 중 오류가 발생했습니다.';
         }
     }
 
@@ -181,24 +180,88 @@ document.addEventListener('DOMContentLoaded', () => {
             return isAsc ? comparison : -comparison;
         });
 
-        // 화면 카드 그리기
+        // 화면 카드 그리기 (정렬이 바뀌어도 선택 상태는 유지)
         sortedBooks.forEach(book => {
             const card = document.createElement('div');
-            card.className = 'book-card';
+            const isSelected = isSameBook(book, selectedBook);
+            card.className = isSelected ? 'book-card selected' : 'book-card';
+            card.setAttribute('role', 'button');
+            card.setAttribute('tabindex', '0');
+            card.setAttribute('aria-pressed', String(isSelected));
 
             const coverSrc = book.coverUrl || book.cover || book.cover_url || 'https://via.placeholder.com/56x80?text=No+Image';
 
             card.innerHTML = `
-            <img src="${coverSrc}" alt="${book.title || '도서'}" class="book-cover" onerror="this.src='https://via.placeholder.com/56x80?text=No+Image'" />
+            <img src="${escapeHtml(coverSrc)}" alt="${escapeHtml(book.title || '도서')}" class="book-cover" onerror="this.src='https://via.placeholder.com/56x80?text=No+Image'" />
             <div class="book-info">
-                <h3 class="book-title" title="${book.title || ''}">${book.title || '제목 없음'}</h3>
-                <p class="book-author">저자: ${book.author || '저자 미상'}</p>
-                <p class="book-publisher">출판사: ${book.publisher || book.pub || '정보 없음'}</p>
-            <p class="book-callno"> ${book.callNo || book.call_no || '기호 없음'}</p>
+                <h3 class="book-title" title="${escapeHtml(book.title || '')}">${escapeHtml(book.title || '제목 없음')}</h3>
+                <p class="book-author">저자: ${escapeHtml(book.author || '저자 미상')}</p>
+                <p class="book-publisher">출판사: ${escapeHtml(book.publisher || book.pub || '정보 없음')}</p>
+            <p class="book-callno"> ${escapeHtml(getCallNo(book) || '기호 없음')}</p>
             </div>
+            <span class="book-select-badge">${isSelected ? '✓ 선택됨' : '선택'}</span>
         `;
+
+            card.addEventListener('click', () => toggleSelectBook(book));
+            card.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleSelectBook(book);
+                }
+            });
             $bookList.appendChild(card);
         });
+    }
+
+    // --------------------------------------------------------
+    // 5-1. 찾을 도서 선택 및 이미지 검색 버튼 잠금/해제
+    // --------------------------------------------------------
+    function getCallNo(book) {
+        return (book && (book.callNo || book.call_no || book.classNo)) || '';
+    }
+
+    function isSameBook(a, b) {
+        if (!a || !b) return false;
+        return a.originalIndex === b.originalIndex;
+    }
+
+    function toggleSelectBook(book) {
+        // 이미 선택한 책을 다시 누르면 선택 해제
+        selectedBook = isSameBook(book, selectedBook) ? null : book;
+        renderBooks();
+        updateImageSearchLock();
+    }
+
+    function clearSelection() {
+        selectedBook = null;
+        updateImageSearchLock();
+    }
+
+    function updateImageSearchLock() {
+        const locked = !selectedBook;
+        $startCameraBtn.disabled = locked;
+        $startCameraBtn.title = locked ? '찾을 책을 먼저 선택해 주세요.' : '';
+    }
+
+    // --------------------------------------------------------
+    // 5-2. 하이라이트 결과 사진 표시/숨김
+    // --------------------------------------------------------
+    function showScanResultImage(imageUrl) {
+        if (!imageUrl) {
+            hideScanResultImage();
+            return;
+        }
+        // image_url은 '/scans/xxx.jpg' 형태의 상대 경로이므로 API 서버 주소를 붙임
+        const src = new URL(imageUrl, API_BASE_URL).href;
+        $scanResultImage.src = src;
+        $scanResultLink.href = src; // 사진을 누르면 원본 크기로 열기
+        $scanResultLink.hidden = false;
+    }
+
+    function hideScanResultImage() {
+        $scanResultLink.hidden = true;
+        $scanResultImage.removeAttribute('src');
+        $scanResultLink.removeAttribute('href');
     }
 
 
@@ -257,6 +320,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openCameraFullscreen() {
+        if (!selectedBook) { // 버튼이 잠겨 있어도 한 번 더 확인
+            alert('검색 결과에서 찾을 책을 먼저 선택해 주세요.');
+            return;
+        }
         $cameraPage.style.display = 'flex'; // 가운데 정렬을 위해 flex 유지
         connectCamera();
     }
@@ -309,13 +376,27 @@ document.addEventListener('DOMContentLoaded', () => {
     $captureBtn.addEventListener('click', handleCapture);
 
     async function uploadScannedImage(dataUrl) {
-        $searchResultMessage.textContent = '이미지를 분석하는 중입니다...';
+        if (!selectedBook) {
+            $searchResultMessage.textContent = '찾을 책이 선택되지 않았습니다.';
+            return;
+        }
+        const target = selectedBook; // 분석 도중 선택이 바뀌어도 촬영 당시의 책으로 요청
+
+        $searchResultMessage.textContent = `'${target.title}' 책을 사진에서 찾는 중입니다...`;
+        hideScanResultImage();
         try {
             const response = await fetch(dataUrl);
             const blob = await response.blob();
 
             const formData = new FormData();
             formData.append('file', blob, 'scan_image.jpg');
+
+            // 선택한 도서 정보 → 백엔드 process_scan()의 target 인자로 전달됨
+            formData.append('title', target.title || '');
+            formData.append('author', target.author || '');
+            formData.append('publisher', target.publisher || target.pub || '');
+            formData.append('call_no', getCallNo(target));
+            formData.append('reg_no', target.regNo || target.reg_no || '');
 
             const apiResponse = await fetch(`${API_BASE_URL}/api/scan`, { method: 'POST', body: formData });
 
@@ -324,10 +405,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await apiResponse.json();
             console.log('스캔 결과:', data);
 
+            // 서버가 만든 하이라이트 사진을 버튼 아래에 표시
+            showScanResultImage(data.image_url);
+
             if (data.found && data.book_info) {
                 $searchResultMessage.textContent = `찾은 도서: ${data.book_info.title} (${data.book_info.author || '저자 미상'})`;
+            } else if (data.message) {
+                $searchResultMessage.textContent = data.message;
             } else {
-                $searchResultMessage.textContent = data.message || '이미지에서 도서를 인식하지 못했습니다.';
+                // 확실하지 않은 경우: 문구 없이 하이라이트 사진만 보여 줌
+                $searchResultMessage.textContent = data.image_url ? '' : '이미지에서 도서를 인식하지 못했습니다.';
             }
 
         } catch (error) {
@@ -339,6 +426,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
+
+// 도서 정보에 <, ", ' 등이 들어 있어도 카드 HTML이 깨지지 않도록 이스케이프
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
 function compareCallNumbers(callNoA, callNoB) {
     const parseInfo = (str) => {

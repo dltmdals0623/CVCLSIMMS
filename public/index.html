@@ -62,18 +62,22 @@
                 </div>
 
                 <div id="imageSearchContainer" class="image-search-wrapper" style="display: none;">
-                    <button id="startCameraBtn" class="action-btn mint-btn image-search-btn">
+                    <button id="startCameraBtn" class="action-btn mint-btn image-search-btn" disabled
+                        title="찾을 책을 먼저 선택해 주세요.">
                         <svg viewBox="0 0 24 24" class="btn-icon">
                             <path
                                 d="M4 4h3l2-2h6l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm8 3a5 5 0 0 0-5 5 5 5 0 0 0 5 5 5 5 0 0 0 5-5 5 5 0 0 0-5-5zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z" />
                         </svg>
                         <span>이미지(카메라)로 검색하기</span>
                     </button>
+                    <!-- OCR·매칭 후 서버가 저장한 하이라이트 사진 (/api/scan의 image_url) -->
+                    <a id="scanResultLink" class="scan-result" href="#" target="_blank" rel="noopener" hidden>
+                        <img id="scanResultImage" alt="찾을 책이 하이라이트된 서가 사진" />
+                    </a>
                     <p id="searchResultMessage" class="search-result-text"></p>
                 </div>
             </article>
             <div id="bookList" class="book-list"></div>
-            <div id="imageSearchContainer" class="image-search-wrapper" style="display: none;">
         </section>
 
         <section id="settingsPage" class="page">
